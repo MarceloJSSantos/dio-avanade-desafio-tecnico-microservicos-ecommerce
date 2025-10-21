@@ -1,6 +1,13 @@
+using Microsoft.EntityFrameworkCore;
+using StockManager.API.Domain.Mappers;
+using StockManager.API.Infrastructure.Db;
+
 var builder = WebApplication.CreateBuilder(args);
+var DbConnection = builder.Configuration.GetConnectionString("DbConnection");
 
 // Add services to the container.
+builder.Services.AddDbContext<StockManagerContext>(options =>
+    options.UseSqlServer(DbConnection));
 
 // Swagger/OpenAPI
 builder.Services.AddEndpointsApiExplorer();
@@ -25,6 +32,11 @@ builder.Services.AddControllers();
 
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
 builder.Services.AddOpenApi();
+
+// Adicionar AutoMapper à coleção de serviços.
+// typeof(ProdutoProfile).Assembly diz ao AutoMapper para escanear 
+// o assembly onde ProdutoProfile está localizado para encontrar todos os Profiles.
+builder.Services.AddAutoMapper(typeof(ProductProfile).Assembly);
 
 var app = builder.Build();
 
