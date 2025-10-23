@@ -48,7 +48,7 @@ namespace StockManager.API.Controllers
 
             if (product == null)
             {
-                return NotFound($"Produto com ID {id} não encontrado.");
+                throw new KeyNotFoundException($"Produto com ID {id} não encontrado.");
             }
 
             var responseDto = _mapper.Map<ProductResponseDTO>(product);
@@ -59,33 +59,18 @@ namespace StockManager.API.Controllers
         [HttpPatch("{productId}/stock")]
         public async Task<IActionResult> UpdateStock(int productId, [FromBody] UpdateStockDTO updateStock)
         {
-            try
-            {
-                var newStock = await _productService.UpdateStockAsync(
-                    productId,
-                    updateStock.TransactionAmount
-                );
+            var newStock = await _productService.UpdateStockAsync(
+                productId,
+                updateStock.TransactionAmount
+            );
 
-                var responseDto = new UpdateStockResponseDTO
-                {
-                    ProductId = productId,
-                    TransactionAmount = newStock
-                };
+            var responseDto = new UpdateStockResponseDTO
+            {
+                ProductId = productId,
+                TransactionAmount = newStock
+            };
 
-                return Ok(responseDto);
-            }
-            catch (KeyNotFoundException ex)
-            {
-                return NotFound(ex.Message);
-            }
-            catch (InvalidOperationException ex)
-            {
-                return BadRequest(ex.Message);
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, $"Erro interno ao processar a atualização de estoque.\nOutro erro: {ex.Message}");
-            }
+            return Ok(responseDto);
         }
     }
 }

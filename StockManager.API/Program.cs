@@ -2,9 +2,18 @@ using Microsoft.EntityFrameworkCore;
 using StockManager.API.Domain.Interfaces;
 using StockManager.API.Domain.Services;
 using StockManager.API.Infrastructure.Db;
+using StockManager.API.Infrastructure.Middleware;
 
 var builder = WebApplication.CreateBuilder(args);
 var DbConnection = builder.Configuration.GetConnectionString("DbConnection");
+
+if (string.IsNullOrWhiteSpace(DbConnection))
+{
+    using var loggerFactory = LoggerFactory.Create(lb => lb.AddConsole());
+    var logger = loggerFactory.CreateLogger("Startup");
+    logger.LogCritical("Connection string 'DbConnection' não configurada.");
+    throw new InvalidOperationException("Connection string 'DbConnection' não configurada. Use User Secrets ou appsettings.");
+}
 
 builder.Services.AddDbContext<StockManagerContext>(options =>
     options.UseSqlServer(DbConnection));
@@ -35,6 +44,8 @@ builder.Services.AddOpenApi();
 builder.Services.AddAutoMapper(AppDomain.CurrentDomain.GetAssemblies());
 
 var app = builder.Build();
+
+app.UseMiddleware<ExceptionMiddleware>();
 
 if (app.Environment.IsDevelopment())
 {

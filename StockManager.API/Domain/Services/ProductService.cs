@@ -8,10 +8,12 @@ namespace StockManager.API.Domain.Services
     public class ProductService : IProductService
     {
         private readonly StockManagerContext _context;
+        private readonly ILogger<ProductService> _logger;
 
-        public ProductService(StockManagerContext context)
+        public ProductService(StockManagerContext context, ILogger<ProductService> logger)
         {
             _context = context;
+            _logger = logger;
         }
 
         public async Task<Product> CreateProductAsync(Product product)
@@ -56,10 +58,13 @@ namespace StockManager.API.Domain.Services
 
                 await transaction.CommitAsync();
 
+                _logger.LogInformation("Estoque atualizado. ProductId={ProductId} NewStock={NewStock}", productId, product.QuantityInStock);
+
                 return product.QuantityInStock;
             }
-            catch (Exception)
+            catch (Exception ex)
             {
+                _logger.LogError(ex, "Erro ao atualizar estoque para ProductId={ProductId}", productId);
                 await transaction.RollbackAsync();
                 throw;
             }
