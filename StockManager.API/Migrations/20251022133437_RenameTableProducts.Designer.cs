@@ -2,6 +2,7 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using StockManager.API.Infrastructure.Db;
 
@@ -10,9 +11,11 @@ using StockManager.API.Infrastructure.Db;
 namespace StockManager.API.Migrations
 {
     [DbContext(typeof(StockManagerContext))]
-    partial class StockManagerContextModelSnapshot : ModelSnapshot
+    [Migration("20251022133437_RenameTableProducts")]
+    partial class RenameTableProducts
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder

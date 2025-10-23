@@ -3,16 +3,14 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 
-namespace StockManager.API.Domain.Entities
+namespace StockManager.API.Domain.DTOs
 {
-    public class Product
+    public record ProductResponseDTO
     {
         public int ProductId { get; set; }
         public string Name { get; set; }
         public string Description { get; set; }
         public decimal Price { get; set; }
-
-        // Dados do Estoque (Quantidade)
         public int QuantityInStock { get; set; }
     }
 }

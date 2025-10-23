@@ -13,7 +13,7 @@ namespace StockManager.API.Infrastructure.Db
         {
         }
 
-        public DbSet<Product> products { get; set; }
+        public DbSet<Product> Products { get; set; }
 
     }
 }
