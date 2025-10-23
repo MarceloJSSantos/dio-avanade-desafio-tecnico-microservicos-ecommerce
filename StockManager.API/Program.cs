@@ -1,19 +1,16 @@
 using Microsoft.EntityFrameworkCore;
 using StockManager.API.Domain.Interfaces;
-using StockManager.API.Domain.Mappers;
 using StockManager.API.Domain.Services;
 using StockManager.API.Infrastructure.Db;
 
 var builder = WebApplication.CreateBuilder(args);
 var DbConnection = builder.Configuration.GetConnectionString("DbConnection");
 
-// Add services to the container.
 builder.Services.AddDbContext<StockManagerContext>(options =>
     options.UseSqlServer(DbConnection));
 
 builder.Services.AddScoped<IProductService, ProductService>();
 
-// Swagger/OpenAPI
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(c =>
 {
@@ -31,21 +28,14 @@ builder.Services.AddSwaggerGen(c =>
 
 });
 
-// AddControllers
 builder.Services.AddControllers();
 
-// Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
 builder.Services.AddOpenApi();
 
-// Adicionar AutoMapper à coleção de serviços.
-// typeof(ProdutoProfile).Assembly diz ao AutoMapper para escanear 
-// o assembly onde ProdutoProfile está localizado para encontrar todos os Profiles.
-//builder.Services.AddAutoMapper(typeof(ProductProfile).Assembly);
 builder.Services.AddAutoMapper(AppDomain.CurrentDomain.GetAssemblies());
 
 var app = builder.Build();
 
-// Enable Swagger e o Swagger UI
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
@@ -56,7 +46,6 @@ if (app.Environment.IsDevelopment())
     });
 }
 
-// Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();

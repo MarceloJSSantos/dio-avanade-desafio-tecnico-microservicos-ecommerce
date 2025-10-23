@@ -1,7 +1,3 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
 using StockManager.API.Domain.Entities;
 
@@ -14,6 +10,5 @@ namespace StockManager.API.Infrastructure.Db
         }
 
         public DbSet<Product> Products { get; set; }
-
     }
 }

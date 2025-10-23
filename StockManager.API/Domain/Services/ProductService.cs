@@ -1,7 +1,3 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
 using StockManager.API.Domain.Entities;
 using StockManager.API.Domain.Interfaces;
@@ -25,19 +21,16 @@ namespace StockManager.API.Domain.Services
             return product;
         }
 
-        // READ ALL
         public async Task<IEnumerable<Product>> GetAllProductsAsync()
         {
             return await _context.Products.ToListAsync();
         }
 
-        // READ BY ID
         public async Task<Product> GetProductByIdAsync(int id)
         {
             return await _context.Products.FindAsync(id);
         }
 
-        // UPDATE STOCK (Com a lógica PATCH / Delta)
         public async Task<int> UpdateStockAsync(int productId, int transactionAmount)
         {
             using var transaction = await _context.Database.BeginTransactionAsync();
@@ -52,26 +45,23 @@ namespace StockManager.API.Domain.Services
                     throw new KeyNotFoundException($"Produto com ID {productId} não encontrado.");
                 }
 
-                // 1. Validação de Estoque (Evita Estoque Negativo)
                 if (product.QuantityInStock + transactionAmount < 0)
                 {
                     throw new InvalidOperationException("Não há estoque suficiente para esta operação.");
                 }
 
-                // 2. Atualizar o Saldo
                 product.QuantityInStock += transactionAmount;
 
-                // 4. Salvar as alterações (Produto e Movimentação)
                 await _context.SaveChangesAsync();
 
                 await transaction.CommitAsync();
 
-                return product.QuantityInStock; // Retorna o novo saldo
+                return product.QuantityInStock;
             }
             catch (Exception)
             {
                 await transaction.RollbackAsync();
-                throw; // Relança a exceção para ser tratada na Controller
+                throw;
             }
         }
     }
