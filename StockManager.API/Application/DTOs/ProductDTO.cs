@@ -1,6 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 
-namespace StockManager.API.Domain.DTOs
+namespace StockManager.API.Application.DTOs
 {
     public record ProductDTO
     {
@@ -14,7 +14,7 @@ namespace StockManager.API.Domain.DTOs
         [Range(0.01, (double)decimal.MaxValue, ErrorMessage = "O preço deve ser maior que zero.")]
         public decimal Price { get; set; }
 
-        [Range(0, int.MaxValue, ErrorMessage = "A quantidade em estoque não pode ser negativa.")]
+        [Range(0, int.MaxValue, ErrorMessage = "A quantidade em estoque deve ser maior que zero.")]
         public int QuantityInStock { get; set; }
     }
 }

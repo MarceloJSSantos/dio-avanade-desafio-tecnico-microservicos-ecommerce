@@ -1,6 +1,6 @@
 using Microsoft.EntityFrameworkCore;
-using StockManager.API.Domain.Interfaces;
-using StockManager.API.Domain.Services;
+using StockManager.API.Application.Interfaces;
+using StockManager.API.Application.Services;
 using StockManager.API.Infrastructure.Db;
 using StockManager.API.Infrastructure.Middleware;
 

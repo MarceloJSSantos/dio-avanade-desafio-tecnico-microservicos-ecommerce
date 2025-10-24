@@ -1,8 +1,8 @@
 using AutoMapper;
-using StockManager.API.Domain.DTOs;
+using StockManager.API.Application.DTOs;
 using StockManager.API.Domain.Entities;
 
-namespace StockManager.API.Domain.Mappers
+namespace StockManager.API.Application.Mappers
 {
     public class ProductProfile : Profile
     {

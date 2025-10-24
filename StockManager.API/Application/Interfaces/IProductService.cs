@@ -1,6 +1,6 @@
 using StockManager.API.Domain.Entities;
 
-namespace StockManager.API.Domain.Interfaces
+namespace StockManager.API.Application.Interfaces
 {
     public interface IProductService
     {

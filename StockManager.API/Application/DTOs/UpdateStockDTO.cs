@@ -1,6 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 
-namespace StockManager.API.Domain.DTOs
+namespace StockManager.API.Application.DTOs
 {
     public record UpdateStockDTO
     {

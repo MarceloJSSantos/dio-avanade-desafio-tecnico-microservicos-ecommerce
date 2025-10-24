@@ -1,7 +1,7 @@
 using AutoMapper;
 using Microsoft.AspNetCore.Mvc;
-using StockManager.API.Domain.DTOs;
-using StockManager.API.Domain.Interfaces;
+using StockManager.API.Application.DTOs;
+using StockManager.API.Application.Interfaces;
 using StockManager.API.Domain.Entities;
 
 namespace StockManager.API.Controllers

@@ -1,9 +1,9 @@
 using Microsoft.EntityFrameworkCore;
 using StockManager.API.Domain.Entities;
-using StockManager.API.Domain.Interfaces;
+using StockManager.API.Application.Interfaces;
 using StockManager.API.Infrastructure.Db;
 
-namespace StockManager.API.Domain.Services
+namespace StockManager.API.Application.Services
 {
     public class ProductService : IProductService
     {

@@ -91,7 +91,7 @@ namespace StockManager.API.Infrastructure.Middleware
             HttpContext httpContext,
             Exception ex,
             string title,
-            string? detail,
+            string detail,
             int statusCode,
             LogLevel logLevel,
             bool addRetryAfter = false)
