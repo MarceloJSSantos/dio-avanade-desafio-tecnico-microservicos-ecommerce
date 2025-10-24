@@ -2,11 +2,39 @@ var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
 
+// Swagger/OpenAPI
+builder.Services.AddEndpointsApiExplorer();
+builder.Services.AddSwaggerGen(c =>
+{
+    c.SwaggerDoc("v1", new Microsoft.OpenApi.Models.OpenApiInfo
+    {
+        Title = "SaleskManager API",
+        Version = "v1",
+        Description = "Microsserviço de Gestão de Vendas para a API",
+        Contact = new Microsoft.OpenApi.Models.OpenApiContact
+        {
+            Name = "Marcelo JS Santos",
+            Email = "marcelojssantos2012@gmail.com"
+        }
+    });
+});
+
 builder.Services.AddControllers();
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
 builder.Services.AddOpenApi();
 
 var app = builder.Build();
+
+// Enable Swagger e o Swagger UI
+if (app.Environment.IsDevelopment())
+{
+    app.UseSwagger();
+
+    app.UseSwaggerUI(c =>
+    {
+        c.SwaggerEndpoint("/swagger/v1/swagger.json", "SalesManager API V1");
+    });
+}
 
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
