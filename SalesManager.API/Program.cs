@@ -1,4 +1,11 @@
+using Microsoft.EntityFrameworkCore;
+using SalesManager.API.Application.Interfaces;
+using SalesManager.API.Domain.Repositories;
+using SalesManager.API.Infrastructure.Db;
+using SalesManager.API.Infrastructure.HttpClients;
+
 var builder = WebApplication.CreateBuilder(args);
+var DbConnection = builder.Configuration.GetConnectionString("DbConnection");
 
 // Add services to the container.
 
@@ -20,6 +27,24 @@ builder.Services.AddSwaggerGen(c =>
 });
 
 builder.Services.AddControllers();
+
+// Configurar DbContext (ex: SQL Server)
+builder.Services.AddDbContext<SalesDbContext>(options =>
+    options.UseSqlServer(builder.Configuration.GetConnectionString("DbConnection")));
+
+// Injeção de Dependência (Scoped, Transient, Singleton)
+builder.Services.AddScoped<ISaleRepository, SaleRepository>();
+builder.Services.AddScoped<ISaleService, SaleService>();
+
+// Configurar o HttpClient para o StockManager
+builder.Services.AddHttpClient<IStockManagerClient, StockManagerClient>();
+
+// <-- Adicionado: Registrar o AutoMapper
+// Isso irá escanear o assembly que contém o 'MappingProfile' 
+// e registrar todos os perfis de mapeamento encontrados.
+//builder.Services.AddAutoMapper(typeof(MappingProfile).Assembly);
+builder.Services.AddAutoMapper(AppDomain.CurrentDomain.GetAssemblies());
+
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
 builder.Services.AddOpenApi();
 
