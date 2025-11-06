@@ -1,14 +1,12 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
+using SalesManager.API.Domain.Enums;
 
 namespace SalesManager.API.Application.DTOs
 {
-    // DTO para criar uma Venda (Request)
     public class CreateSaleRequestDTO
     {
-        public int CustomerId { get; set; } // <-- Mudança
-        public required List<CreateSaleItemRequestDTO> Items { get; set; }
+        public int CustomerId { get; set; }
+        public List<CreateSaleItemRequestDTO> Items { get; set; } = new();
+
+        public SaleStatus? InitialStatus { get; set; }
     }
 }

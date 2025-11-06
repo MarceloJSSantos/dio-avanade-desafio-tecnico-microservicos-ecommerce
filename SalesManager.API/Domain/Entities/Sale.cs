@@ -4,8 +4,8 @@ namespace SalesManager.API.Domain.Entities
 {
     public class Sale
     {
-        public int Id { get; private set; } // <-- Mudança: int
-        public int CustomerId { get; private set; } // <-- Mudança: int
+        public int Id { get; private set; }
+        public int CustomerId { get; private set; }
         public DateTime CreatedAt { get; private set; }
         public SaleStatus Status { get; private set; }
         public decimal TotalPrice { get; private set; }
@@ -13,16 +13,14 @@ namespace SalesManager.API.Domain.Entities
         private readonly List<SaleItem> _items = new List<SaleItem>();
         public IReadOnlyCollection<SaleItem> Items => _items.AsReadOnly();
 
-        // Construtor
-        public Sale(int customerId) // <-- Mudança: int
+        public Sale(int customerId)
         {
-            // O 'Id' agora será gerado pelo banco de dados (Auto-increment)
             CustomerId = customerId;
             CreatedAt = DateTime.UtcNow;
             Status = SaleStatus.PendingPayment;
         }
 
-        public void AddItem(int productId, int quantity, decimal unitPrice) // <-- Mudança: int
+        public void AddItem(int productId, int quantity, decimal unitPrice)
         {
             if (Status != SaleStatus.PendingPayment)
             {
@@ -34,7 +32,6 @@ namespace SalesManager.API.Domain.Entities
             CalculateTotalPrice();
         }
 
-        // ... (Restante dos métodos: CalculateTotalPrice, SetStatusToPaid, Cancel) ...
         public void CalculateTotalPrice()
         {
             TotalPrice = _items.Sum(item => item.Subtotal);
@@ -49,12 +46,42 @@ namespace SalesManager.API.Domain.Entities
             }
         }
 
-        public void Cancel()
+        public void SetStatusToShipped()
+        {
+            // Regra de negócio: só pode Enviar se estiver Pago
+            if (Status == SaleStatus.Paid)
+            {
+                Status = SaleStatus.Shipped;
+            }
+            else
+            {
+                throw new InvalidOperationException("Só é possível enviar uma venda que esteja com status 'Paid'.");
+            }
+        }
+
+        public void SetStatusToCancel()
         {
             // Regra de negócio: só pode cancelar se não estiver enviado/concluído
-            if (Status != SaleStatus.Shipped && Status != SaleStatus.Completed)
+            if (Status != SaleStatus.Shipped && Status != SaleStatus.Completed && Status != SaleStatus.Cancelled)
             {
                 Status = SaleStatus.Cancelled;
+            }
+            else
+            {
+                throw new InvalidOperationException("Não é possível cancelar uma venda já enviada/concluída ou já cancelada.");
+            }
+        }
+
+        public void SetStatusToCompleted()
+        {
+            // Regra de negócio: só pode completar se estiver enviado
+            if (Status == SaleStatus.Shipped)
+            {
+                Status = SaleStatus.Completed;
+            }
+            else
+            {
+                throw new InvalidOperationException("Só é possível concluir uma venda que esteja com status 'Shipped'.");
             }
         }
     }

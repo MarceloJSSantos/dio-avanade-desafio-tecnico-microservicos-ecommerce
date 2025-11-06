@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using SalesManager.API.Application.Common;
 using SalesManager.API.Application.Interfaces;
 using SalesManager.API.Domain.Entities;
 using SalesManager.API.Infrastructure.Db;
@@ -30,7 +31,6 @@ namespace SalesManager.API.Domain.Repositories
 
         public async Task<Sale?> GetByIdAsync(int id)
         {
-            // return new Sale(15000000);
             return await _context.Sales
                 .Include(s => s.Items) // Carregar os itens juntos
                 .FirstOrDefaultAsync(s => s.Id == id);
@@ -43,25 +43,33 @@ namespace SalesManager.API.Domain.Repositories
             await _context.SaveChangesAsync();
         }
 
-        /// <summary>
-        /// Retorna uma lista paginada de todas as vendas, ordenadas pela data de criação.
-        /// </summary>
-        public async Task<IEnumerable<Sale>> GetSalesAsync(int pageNumber, int pageSize)
+        public async Task<PagedResult<Sale>> GetSalesAsync(int pageNumber, int pageSize)
         {
-            // Cálculo do 'Skip' para implementar a paginação:
-            // Ex: pageNumber=2, pageSize=10 -> Skip = (2-1) * 10 = 10 (pula os 10 primeiros)
+            if (pageNumber < 1) pageNumber = 1;
+            if (pageSize < 1) pageSize = 20;
+
+            var query = _context.Sales.AsQueryable();
+
+            int totalCount = await query.CountAsync();
+
+            if (totalCount == 0)
+            {
+                return new PagedResult<Sale>(new List<Sale>(), 0);
+            }
+
             int skip = (pageNumber - 1) * pageSize;
 
-            return await _context.Sales
-                // 1. Incluir os itens para evitar problemas de N+1
+            var sales = await query
                 .Include(s => s.Items)
-                // 2. Ordenar (essencial para que a paginação funcione de forma consistente)
+                // Ordenar (essencial para que a paginação funcione de forma consistente)
                 .OrderByDescending(s => s.CreatedAt)
-                // 3. Pular a quantidade de registros da página anterior
+                // Pular a quantidade de registros da página anterior
                 .Skip(skip)
-                // 4. Pegar a quantidade de registros da página atual
+                // Pegar a quantidade de registros da página atual
                 .Take(pageSize)
                 .ToListAsync();
+
+            return new PagedResult<Sale>(sales, totalCount);
         }
     }
 }

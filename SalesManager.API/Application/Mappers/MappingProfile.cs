@@ -12,10 +12,5 @@ public class MappingProfile : Profile
             .ForMember(dest => dest.Status, opt => opt.MapFrom(src => src.Status.ToString()));
 
         CreateMap<SaleItem, SaleItemResponseDTO>();
-
-        // Nota: Não estamos mapeando DTOs de Request -> Entidades
-        // porque a criação da entidade 'Sale' envolve lógica de negócio 
-        // (chamar o construtor, validar, etc.) que é melhor tratada
-        // explicitamente dentro do 'SaleService'.
     }
 }

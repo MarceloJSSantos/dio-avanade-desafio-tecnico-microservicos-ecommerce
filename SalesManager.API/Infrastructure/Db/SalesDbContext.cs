@@ -16,7 +16,7 @@ namespace SalesManager.API.Infrastructure.Db
             {
                 e.HasKey(s => s.Id);
 
-                // <-- Adicionado: Configura o 'Id' como auto-incremental
+                // Configura o 'Id' como auto-incremental
                 e.Property(s => s.Id).ValueGeneratedOnAdd();
 
                 e.HasMany(s => s.Items).WithOne().HasForeignKey(i => i.SaleId);
@@ -27,7 +27,7 @@ namespace SalesManager.API.Infrastructure.Db
             {
                 e.HasKey(i => i.Id);
 
-                // <-- Adicionado: Configura o 'Id' como auto-incremental
+                // Configura o 'Id' como auto-incremental
                 e.Property(i => i.Id).ValueGeneratedOnAdd();
             });
         }

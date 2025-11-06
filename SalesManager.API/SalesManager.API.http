@@ -1,6 +1,6 @@
-@SalesManager.API_HostAddress = http://localhost:5241
+@SalesManager.API_HostAddress = http://localhost:5102
 
-GET {{SalesManager.API_HostAddress}}/weatherforecast/
+GET {{SalesManager.API_HostAddress}}/api/sales
 Accept: application/json
 
 ###

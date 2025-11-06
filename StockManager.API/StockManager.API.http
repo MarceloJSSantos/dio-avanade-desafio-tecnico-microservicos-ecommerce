@@ -1,6 +1,6 @@
 @StockManager.API_HostAddress = http://localhost:5101
 
-GET {{StockManager.API_HostAddress}}/weatherforecast/
+GET {{StockManager.API_HostAddress}}/api/products
 Accept: application/json
 
 ###

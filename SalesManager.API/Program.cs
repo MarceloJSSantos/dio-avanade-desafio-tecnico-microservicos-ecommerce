@@ -24,9 +24,15 @@ builder.Services.AddSwaggerGen(c =>
             Email = "marcelojssantos2012@gmail.com"
         }
     });
-});
+}
+);
 
-builder.Services.AddControllers();
+builder.Services.AddControllers()
+    .AddJsonOptions(options =>
+    {
+        // Permite receber/retornar enums como nomes (ex: "Paid") no JSON
+        options.JsonSerializerOptions.Converters.Add(new System.Text.Json.Serialization.JsonStringEnumConverter());
+    });
 
 // Configurar DbContext (ex: SQL Server)
 builder.Services.AddDbContext<SalesDbContext>(options =>
@@ -39,13 +45,11 @@ builder.Services.AddScoped<ISaleService, SaleService>();
 // Configurar o HttpClient para o StockManager
 builder.Services.AddHttpClient<IStockManagerClient, StockManagerClient>();
 
-// <-- Adicionado: Registrar o AutoMapper
+// Registrar o AutoMapper
 // Isso irá escanear o assembly que contém o 'MappingProfile' 
 // e registrar todos os perfis de mapeamento encontrados.
-//builder.Services.AddAutoMapper(typeof(MappingProfile).Assembly);
 builder.Services.AddAutoMapper(AppDomain.CurrentDomain.GetAssemblies());
 
-// Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
 builder.Services.AddOpenApi();
 
 var app = builder.Build();

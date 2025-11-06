@@ -18,7 +18,7 @@ namespace SalesManager.API.Infrastructure.HttpClients
         public async Task<ProductStockInfoDTO?> GetProductStockAsync(int productId)
         {
             // Ex: GET http://stockmanager.api/api/products/{productId}/stock
-            var endPointFull = $"{_stockManagerBaseUrl}/api/products/{productId}/stock";
+            var endPointFull = $"{_stockManagerBaseUrl}api/products/{productId}";
             var response = await _httpClient.GetAsync(endPointFull);
 
             if (!response.IsSuccessStatusCode)
@@ -31,13 +31,10 @@ namespace SalesManager.API.Infrastructure.HttpClients
 
         public async Task<bool> DecreaseStockAsync(int productId, int quantity)
         {
-            if (quantity > 0)
-            {
-                return false; // ou lançar exceção
-            }
+            quantity = quantity * -1; //(Inverte o sinal para decrementar)
 
             // Ex: PUT http://stockmanager.api/api/products/{productId}/stock
-            var endPointFull = $"{_stockManagerBaseUrl}/api/products/{productId}/stock";
+            var endPointFull = $"{_stockManagerBaseUrl}api/products/{productId}/stock";
             var content = new { transactionAmount = quantity };
 
             var request = new HttpRequestMessage(HttpMethod.Patch, endPointFull)
@@ -50,16 +47,10 @@ namespace SalesManager.API.Infrastructure.HttpClients
             return response.IsSuccessStatusCode;
         }
 
-        // ... Implementação de IncreaseStockAsync ...
         public async Task<bool> IncreaseStockAsync(int productId, int quantity)
         {
-            if (quantity < 0)
-            {
-                return false; // ou lançar exceção
-            }
-
             // Ex: PUT http://stockmanager.api/api/products/{productId}/stock
-            var endPointFull = $"{_stockManagerBaseUrl}/api/products/{productId}/stock";
+            var endPointFull = $"{_stockManagerBaseUrl}api/products/{productId}/stock";
             var content = new { transactionAmount = quantity };
 
             var request = new HttpRequestMessage(HttpMethod.Patch, endPointFull)
