@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using StockManager.API.Application.Interfaces;
 using StockManager.API.Application.Services;
@@ -37,7 +38,23 @@ builder.Services.AddSwaggerGen(c =>
 
 });
 
-builder.Services.AddControllers();
+builder.Services.AddControllers()
+.ConfigureApiBehaviorOptions(options =>
+    {
+        options.InvalidModelStateResponseFactory = context =>
+        {
+            var problemDetails = new ProblemDetails
+            {
+                Title = "Bad Request",
+                Status = StatusCodes.Status400BadRequest,
+                Detail = string.Join(" | ", context.ModelState.Values
+                    .SelectMany(v => v.Errors)
+                    .Select(e => e.ErrorMessage))
+            };
+
+            return new BadRequestObjectResult(problemDetails);
+        };
+    });
 
 builder.Services.AddOpenApi();
 

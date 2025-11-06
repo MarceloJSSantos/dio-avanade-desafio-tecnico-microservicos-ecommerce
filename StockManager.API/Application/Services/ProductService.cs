@@ -2,6 +2,9 @@ using Microsoft.EntityFrameworkCore;
 using StockManager.API.Domain.Entities;
 using StockManager.API.Application.Interfaces;
 using StockManager.API.Infrastructure.Db;
+using StockManager.API.Application.Common;
+using StockManager.API.Application.DTOs;
+using AutoMapper;
 
 namespace StockManager.API.Application.Services
 {
@@ -9,11 +12,13 @@ namespace StockManager.API.Application.Services
     {
         private readonly StockManagerContext _context;
         private readonly ILogger<ProductService> _logger;
+        private readonly IMapper _mapper;
 
-        public ProductService(StockManagerContext context, ILogger<ProductService> logger)
+        public ProductService(StockManagerContext context, ILogger<ProductService> logger, IMapper mapper)
         {
             _context = context;
             _logger = logger;
+            _mapper = mapper;
         }
 
         public async Task<Product> CreateProductAsync(Product product)
@@ -21,11 +26,6 @@ namespace StockManager.API.Application.Services
             _context.Products.Add(product);
             await _context.SaveChangesAsync();
             return product;
-        }
-
-        public async Task<IEnumerable<Product>> GetAllProductsAsync()
-        {
-            return await _context.Products.ToListAsync();
         }
 
         public async Task<Product> GetProductByIdAsync(int id)
@@ -68,6 +68,31 @@ namespace StockManager.API.Application.Services
                 await transaction.RollbackAsync();
                 throw;
             }
+        }
+
+        public async Task<PagedResult<ProductResponseDTO>> GetPagedProductsAsync(int page, int pageSize)
+        {
+            const int MaxPageSize = 30;
+            if (page <= 0) page = 1;
+            if (pageSize <= 0) pageSize = 20;
+
+            pageSize = Math.Min(pageSize, MaxPageSize);
+
+            var query = _context.Products.AsNoTracking().OrderBy(p => p.ProductId);
+            var total = await query.CountAsync();
+
+            var items = await query
+                .Skip((page - 1) * pageSize)
+                .Take(pageSize)
+                .ToListAsync();
+
+            var productDtos = _mapper.Map<IEnumerable<ProductResponseDTO>>(items);
+
+            return new PagedResult<ProductResponseDTO>
+            {
+                Items = productDtos,
+                TotalCount = total
+            };
         }
     }
 }

@@ -1,4 +1,6 @@
+using StockManager.API.Application.Common;
 using StockManager.API.Domain.Entities;
+using StockManager.API.Application.DTOs;
 
 namespace StockManager.API.Application.Interfaces
 {
@@ -6,10 +8,10 @@ namespace StockManager.API.Application.Interfaces
     {
         Task<Product> CreateProductAsync(Product product);
 
-        Task<IEnumerable<Product>> GetAllProductsAsync();
-
         Task<Product> GetProductByIdAsync(int id);
 
-        Task<int> UpdateStockAsync(int products, int transactionAmount);
+        Task<int> UpdateStockAsync(int productId, int transactionAmount);
+
+        Task<PagedResult<ProductResponseDTO>> GetPagedProductsAsync(int page, int pageSize);
     }
 }

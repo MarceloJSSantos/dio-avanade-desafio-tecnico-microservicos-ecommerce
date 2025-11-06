@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using StockManager.API.Application.DTOs;
 using StockManager.API.Application.Interfaces;
 using StockManager.API.Domain.Entities;
+using SalesManager.API.Application.Shared;
 
 namespace StockManager.API.Controllers
 {
@@ -30,15 +31,25 @@ namespace StockManager.API.Controllers
             return CreatedAtAction(nameof(GetById), new { id = productCreated.ProductId }, responseDto);
         }
 
-
         [HttpGet]
-        public async Task<IActionResult> GetAll()
+        public async Task<IActionResult> GetPagedProductsAsync([FromQuery] int page = 1, [FromQuery] int pageSize = 20)
         {
-            var products = await _productService.GetAllProductsAsync();
+            var paged = await _productService.GetPagedProductsAsync(page, pageSize);
 
-            var responseDtos = _mapper.Map<IEnumerable<ProductResponseDTO>>(products);
+            if (paged == null || !paged.Items.Any())
+            {
+                throw new KeyNotFoundException($"Nenhum produto encontrado na página {page} solicitada.");
+            }
 
-            return Ok(responseDtos);
+            var response = new PagedResponse<ProductResponseDTO>(
+                paged.Items,
+                page,
+                pageSize,
+                paged.TotalCount
+            );
+            ;
+
+            return Ok(response);
         }
 
         [HttpGet("{id}")]
