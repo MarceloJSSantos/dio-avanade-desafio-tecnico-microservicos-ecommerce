@@ -1,11 +1,14 @@
 namespace SalesManager.API.Application.DTOs
 {
-    public class SaleResponseDTO
+    public record SaleResponseDTO
     {
-        public int Id { get; set; }
-        public required string Status { get; set; }
-        public decimal TotalPrice { get; set; }
-        public DateTime CreatedAt { get; set; }
-        public required List<SaleItemResponseDTO> Items { get; set; }
+        public int Id { get; init; }
+
+        public required string Status { get; init; }
+
+        public decimal TotalPrice { get; init; }
+        public DateTime CreatedAt { get; init; }
+
+        public required List<SaleItemResponseDTO> Items { get; init; }
     }
 }

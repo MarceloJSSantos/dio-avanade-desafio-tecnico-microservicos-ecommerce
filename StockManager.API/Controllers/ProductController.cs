@@ -75,11 +75,10 @@ namespace StockManager.API.Controllers
                 updateStock.TransactionAmount
             );
 
-            var responseDto = new UpdateStockResponseDTO
-            {
-                ProductId = productId,
-                TransactionAmount = newStock
-            };
+            var responseDto = new UpdateStockResponseDTO(
+                productId,
+                newStock
+            );
 
             return Ok(responseDto);
         }

@@ -6,6 +6,6 @@ namespace StockManager.API.Application.DTOs
     {
         [Required]
         [Range(-10000, 10000, ErrorMessage = "O valor permitido deve estar entre {1} e {2}.")]
-        public int TransactionAmount { get; set; }
+        public int TransactionAmount { get; init; }
     }
 }

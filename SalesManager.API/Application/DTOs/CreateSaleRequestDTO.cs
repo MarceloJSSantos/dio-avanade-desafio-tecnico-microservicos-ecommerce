@@ -2,11 +2,12 @@ using SalesManager.API.Domain.Enums;
 
 namespace SalesManager.API.Application.DTOs
 {
-    public class CreateSaleRequestDTO
+    public record CreateSaleRequestDTO
     {
-        public int CustomerId { get; set; }
-        public List<CreateSaleItemRequestDTO> Items { get; set; } = new();
+        public int CustomerId { get; init; }
 
-        public SaleStatus? InitialStatus { get; set; }
+        public List<CreateSaleItemRequestDTO> Items { get; init; } = new();
+
+        public SaleStatus? InitialStatus { get; init; }
     }
 }

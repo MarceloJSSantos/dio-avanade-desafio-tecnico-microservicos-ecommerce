@@ -2,15 +2,19 @@ using System.Text.Json.Serialization;
 
 namespace SalesManager.API.Application.DTOs
 {
-    public class ProductStockInfoDTO
+    public record ProductStockInfoDTO
     {
-        public int ProductId { get; set; }
+        public int ProductId { get; init; }
+
         [JsonPropertyName("Name")]
-        public required string ProductName { get; set; }
-        public string? ProductDescription { get; set; }
+        public required string ProductName { get; init; }
+
+        public string? ProductDescription { get; init; }
+
         [JsonPropertyName("Price")]
-        public decimal UnitPrice { get; set; }
+        public decimal UnitPrice { get; init; }
+
         [JsonPropertyName("QuantityInStock")]
-        public int StockQuantity { get; set; }
+        public int StockQuantity { get; init; }
     }
 }
