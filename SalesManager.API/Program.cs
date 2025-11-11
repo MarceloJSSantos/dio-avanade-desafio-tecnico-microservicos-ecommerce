@@ -3,6 +3,7 @@ using SalesManager.API.Application.Interfaces;
 using SalesManager.API.Domain.Repositories;
 using SalesManager.API.Infrastructure.Db;
 using SalesManager.API.Infrastructure.HttpClients;
+using Microsoft.AspNetCore.Mvc;
 
 var builder = WebApplication.CreateBuilder(args);
 var DbConnection = builder.Configuration.GetConnectionString("DbConnection");
@@ -32,6 +33,22 @@ builder.Services.AddControllers()
     {
         // Permite receber/retornar enums como nomes (ex: "Paid") no JSON
         options.JsonSerializerOptions.Converters.Add(new System.Text.Json.Serialization.JsonStringEnumConverter());
+    })
+    .ConfigureApiBehaviorOptions(options =>
+    {
+        options.InvalidModelStateResponseFactory = context =>
+        {
+            var problemDetails = new ValidationProblemDetails(context.ModelState)
+            {
+                Title = "Bad Request",
+                Status = StatusCodes.Status400BadRequest,
+                Detail = "Dados de entrada inválidos. Verifique os erros para mais detalhes."
+            };
+            return new BadRequestObjectResult(problemDetails)
+            {
+                ContentTypes = { "application/problem+json" }
+            };
+        };
     });
 
 // Configurar DbContext (ex: SQL Server)
