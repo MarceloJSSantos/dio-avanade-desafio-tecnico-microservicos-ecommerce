@@ -34,20 +34,36 @@ builder.Services.AddControllers()
         // Permite receber/retornar enums como nomes (ex: "Paid") no JSON
         options.JsonSerializerOptions.Converters.Add(new System.Text.Json.Serialization.JsonStringEnumConverter());
     })
+    // .ConfigureApiBehaviorOptions(options =>
+    // {
+    //     options.InvalidModelStateResponseFactory = context =>
+    //     {
+    //         var problemDetails = new ValidationProblemDetails(context.ModelState)
+    //         {
+    //             Title = "Bad Request",
+    //             Status = StatusCodes.Status400BadRequest,
+    //             Detail = "Dados de entrada inválidos. Verifique os erros para mais detalhes."
+    //         };
+    //         return new BadRequestObjectResult(problemDetails)
+    //         {
+    //             ContentTypes = { "application/problem+json" }
+    //         };
+    //     };
+    // })
     .ConfigureApiBehaviorOptions(options =>
     {
         options.InvalidModelStateResponseFactory = context =>
         {
-            var problemDetails = new ValidationProblemDetails(context.ModelState)
+            var problemDetails = new ProblemDetails
             {
                 Title = "Bad Request",
                 Status = StatusCodes.Status400BadRequest,
-                Detail = "Dados de entrada inválidos. Verifique os erros para mais detalhes."
+                Detail = string.Join(" | ", context.ModelState.Values
+                    .SelectMany(v => v.Errors)
+                    .Select(e => e.ErrorMessage))
             };
-            return new BadRequestObjectResult(problemDetails)
-            {
-                ContentTypes = { "application/problem+json" }
-            };
+
+            return new BadRequestObjectResult(problemDetails);
         };
     });
 
@@ -71,6 +87,9 @@ builder.Services.AddOpenApi();
 
 var app = builder.Build();
 
+// registrar middleware de tratamento centralizado de exceções
+app.UseMiddleware<SalesManager.API.Infrastructure.Middleware.ExceptionMiddleware>();
+
 // Enable Swagger e o Swagger UI
 if (app.Environment.IsDevelopment())
 {
@@ -89,9 +108,6 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
-
 app.UseAuthorization();
-
 app.MapControllers();
-
 app.Run();

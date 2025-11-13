@@ -16,52 +16,39 @@ namespace SalesManager.API.Controllers
             _saleService = saleService;
         }
 
+        [HttpPost]
+        public async Task<IActionResult> Create([FromBody] CreateSaleRequestDTO request)
+        {
+            if (!ModelState.IsValid)
+                return ValidationProblem(ModelState);
+
+            var created = await _saleService.CreateSaleAsync(request);
+            return CreatedAtAction(nameof(GetById), new { id = created.Id }, created);
+        }
+
         [HttpGet("{id}")]
         public async Task<IActionResult> GetById(int id)
         {
-            try
-            {
-                var sale = await _saleService.GetSaleByIdAsync(id);
-                return Ok(sale);
-            }
-            catch (Exception ex)
-            {
-                return NotFound(new { message = ex.Message });
-            }
-        }
-
-        [HttpPost]
-        public async Task<IActionResult> CreateSale([FromBody] CreateSaleRequestDTO request)
-        {
-            try
-            {
-                if (request == null || request.Items == null || !request.Items.Any())
-                    return BadRequest("Payload inválido ou sem itens.");
-
-                var saleResponse = await _saleService.CreateSaleAsync(request);
-
-                return CreatedAtAction(nameof(GetById), new { id = saleResponse.Id }, saleResponse);
-            }
-            catch (Exception ex)
-            {
-                return BadRequest(new { message = ex.Message });
-            }
+            var sale = await _saleService.GetSaleByIdAsync(id);
+            return Ok(sale);
         }
 
         [HttpPut("{id}/cancel")]
-        public async Task<IActionResult> CancelSale(int id)
+        public async Task<IActionResult> Cancel(int id)
         {
-            try
-            {
-                var success = await _saleService.CancelSaleAsync(id);
-                if (!success) return BadRequest("Não foi possível cancelar a venda.");
-                return NoContent();
-            }
-            catch (Exception ex)
-            {
-                return BadRequest(new { message = ex.Message });
-            }
+            var success = await _saleService.CancelSaleAsync(id);
+            if (success) return NoContent();
+            return StatusCode(500);
+        }
 
+        [HttpPatch("{id}/status")]
+        public async Task<IActionResult> UpdateStatus(int id, [FromBody] UpdateSaleStatusRequestDTO request)
+        {
+            if (!ModelState.IsValid)
+                return ValidationProblem(ModelState);
+
+            var updated = await _saleService.UpdateSaleStatusAsync(id, request);
+            return Ok(updated);
         }
 
         [HttpGet]
@@ -69,54 +56,22 @@ namespace SalesManager.API.Controllers
             [FromQuery] int pageNumber = 1,
             [FromQuery] int pageSize = 20)
         {
-            try
+
+            var pagedResult = await _saleService.GetSalesAsync(pageNumber, pageSize);
+
+            if (pagedResult == null || !pagedResult.Items.Any())
             {
-                var pagedResult = await _saleService.GetSalesAsync(pageNumber, pageSize);
-
-                if (pagedResult == null || !pagedResult.Items.Any())
-                {
-                    return NotFound($"Nenhuma venda encontrada na página {pageNumber} solicitada.");
-                }
-
-                var response = new PagedResponse<SaleResponseDTO>(
-                    pagedResult.Items,
-                    pageNumber,
-                    pageSize,
-                    pagedResult.TotalCount
-                );
-
-                return Ok(response);
+                throw new KeyNotFoundException($"Nenhuma venda encontrada na página  solicitada '{pageNumber}'.");
             }
-            catch (Exception ex)
-            {
-                return StatusCode(500, new { message = "Ocorreu um erro interno", details = ex.Message });
-            }
-        }
 
-        [HttpPatch("{id}/status")]
-        public async Task<IActionResult> UpdateSaleStatus(
-            [FromRoute] int id,
-            [FromBody] UpdateSaleStatusRequestDTO request)
-        {
-            try
-            {
-                if (!ModelState.IsValid)
-                {
-                    return BadRequest(ModelState);
-                }
+            var response = new PagedResponse<SaleResponseDTO>(
+                pagedResult.Items,
+                pageNumber,
+                pageSize,
+                pagedResult.TotalCount
+            );
 
-                var saleResponse = await _saleService.UpdateSaleStatusAsync(id, request);
-
-                return Ok(saleResponse);
-            }
-            catch (InvalidOperationException ex)
-            {
-                return BadRequest(new { message = ex.Message });
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, new { message = "Ocorreu um erro ao atualizar o status: " + ex.Message });
-            }
+            return Ok(response);
         }
     }
 }

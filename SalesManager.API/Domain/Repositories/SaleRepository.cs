@@ -52,11 +52,6 @@ namespace SalesManager.API.Domain.Repositories
 
             int totalCount = await query.CountAsync();
 
-            if (totalCount == 0)
-            {
-                return new PagedResult<Sale>(new List<Sale>(), 0);
-            }
-
             int skip = (pageNumber - 1) * pageSize;
 
             var sales = await query
