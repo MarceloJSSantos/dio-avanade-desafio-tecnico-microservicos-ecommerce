@@ -72,7 +72,7 @@ namespace StockManager.API.Controllers
         {
             var newStock = await _productService.UpdateStockAsync(
                 productId,
-                updateStock.TransactionAmount
+                (int)updateStock.TransactionAmount
             );
 
             var responseDto = new UpdateStockResponseDTO(
