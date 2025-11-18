@@ -1,4 +1,3 @@
-using System.Net;
 using System.Text.Json;
 using System.Data.Common;
 using System.Net.Sockets;
@@ -63,8 +62,7 @@ namespace SalesManager.API.Infrastructure.Middleware
             LogLevel logLevel,
             bool addRetryAfter = false)
         {
-            _logger.Log(logLevel, ex, "{Title}: {Message}", title, ex.Message);
-
+            _logger.Log(logLevel, ex, ">>> {Title}: {Message}", title, ex.Message);
             if (httpContext.Response.HasStarted)
                 return;
 

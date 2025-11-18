@@ -4,8 +4,27 @@ using SalesManager.API.Domain.Repositories;
 using SalesManager.API.Infrastructure.Db;
 using SalesManager.API.Infrastructure.HttpClients;
 using Microsoft.AspNetCore.Mvc;
+using SalesManager.API.Infrastructure.Middleware;
 
 var builder = WebApplication.CreateBuilder(args);
+
+// configure structured logging providers (console + debug) and allow filtering via appsettings
+builder.Logging.ClearProviders();
+builder.Logging.AddConfiguration(builder.Configuration.GetSection("Logging"));
+
+builder.Logging.AddConsole()
+    .AddSimpleConsole(options =>
+    {
+        options.IncludeScopes = true;
+        options.ColorBehavior = Microsoft.Extensions.Logging.Console.LoggerColorBehavior.Enabled;
+        options.TimestampFormat = "[HH:mm:ss.fff] ";
+        options.SingleLine = false;
+    });
+
+builder.Logging.AddDebug();
+// Reduzir verbosidade de EF Core SQL em produção
+builder.Logging.AddFilter("Microsoft.EntityFrameworkCore.Database.Command", LogLevel.Warning);
+
 var DbConnection = builder.Configuration.GetConnectionString("DbConnection");
 
 // Add services to the container.
@@ -34,22 +53,7 @@ builder.Services.AddControllers()
         // Permite receber/retornar enums como nomes (ex: "Paid") no JSON
         options.JsonSerializerOptions.Converters.Add(new System.Text.Json.Serialization.JsonStringEnumConverter());
     })
-    // .ConfigureApiBehaviorOptions(options =>
-    // {
-    //     options.InvalidModelStateResponseFactory = context =>
-    //     {
-    //         var problemDetails = new ValidationProblemDetails(context.ModelState)
-    //         {
-    //             Title = "Bad Request",
-    //             Status = StatusCodes.Status400BadRequest,
-    //             Detail = "Dados de entrada inválidos. Verifique os erros para mais detalhes."
-    //         };
-    //         return new BadRequestObjectResult(problemDetails)
-    //         {
-    //             ContentTypes = { "application/problem+json" }
-    //         };
-    //     };
-    // })
+
     .ConfigureApiBehaviorOptions(options =>
     {
         options.InvalidModelStateResponseFactory = context =>
@@ -87,7 +91,8 @@ builder.Services.AddOpenApi();
 
 var app = builder.Build();
 
-// registrar middleware de tratamento centralizado de exceções
+// registrar middleware de correlação e de exceção
+app.UseMiddleware<CorrelationIdMiddleware>();
 app.UseMiddleware<SalesManager.API.Infrastructure.Middleware.ExceptionMiddleware>();
 
 // Enable Swagger e o Swagger UI
