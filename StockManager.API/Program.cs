@@ -6,6 +6,24 @@ using StockManager.API.Infrastructure.Db;
 using StockManager.API.Infrastructure.Middleware;
 
 var builder = WebApplication.CreateBuilder(args);
+
+// configure structured logging providers (console + debug) and allow filtering via appsettings
+builder.Logging.ClearProviders();
+builder.Logging.AddConfiguration(builder.Configuration.GetSection("Logging"));
+
+builder.Logging.AddConsole()
+    .AddSimpleConsole(options =>
+    {
+        options.IncludeScopes = true;
+        options.ColorBehavior = Microsoft.Extensions.Logging.Console.LoggerColorBehavior.Enabled;
+        options.TimestampFormat = "[HH:mm:ss.fff] ";
+        options.SingleLine = false;
+    });
+
+builder.Logging.AddDebug();
+// Reduzir verbosidade de EF Core SQL em produção
+builder.Logging.AddFilter("Microsoft.EntityFrameworkCore.Database.Command", LogLevel.Warning);
+
 var DbConnection = builder.Configuration.GetConnectionString("DbConnection");
 
 if (string.IsNullOrWhiteSpace(DbConnection))
@@ -62,6 +80,8 @@ builder.Services.AddAutoMapper(AppDomain.CurrentDomain.GetAssemblies());
 
 var app = builder.Build();
 
+//middleware de correlação (gera X-Correlation-Id) antes do middleware de exceções
+app.UseMiddleware<CorrelationIdMiddleware>();
 app.UseMiddleware<ExceptionMiddleware>();
 
 if (app.Environment.IsDevelopment())
