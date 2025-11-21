@@ -29,17 +29,46 @@ public class SaleService : ISaleService
         _logger.LogInformation(">>> Creating sale for CustomerId='{CustomerId}' ItemsCount='{ItemsCount}'", request.CustomerId, request.Items?.Count ?? 0);
         var sale = new Sale(request.CustomerId);
 
+        // // Validação de Duplicidade (Regra Crítica para o Estoque)
+        // var duplicateProducts = request.Items
+        //     .GroupBy(i => i.ProductId)
+        //     .Where(g => g.Count() > 1)
+        //     .Select(g => g.Key)
+        //     .ToList();
+
+        // if (duplicateProducts.Any())
+        // {
+        //     var ids = string.Join(", ", duplicateProducts);
+        //     _logger.LogWarning("Produtos duplicados detectados na requisição. Ids: {ids}. Agrupe os itens antes de enviar.", ids);
+        //     throw new InvalidOperationException($"Produtos duplicados detectados na requisição. Ids: {ids}. Agrupe os itens antes de enviar.");
+        // }
+
         foreach (var itemRequest in request.Items!)
         {
-            var productInfo = await _stockManagerClient.GetProductStockAsync(itemRequest.ProductId);
+            ProductStockInfoDTO? productInfo;
+
+            try
+            {
+                productInfo = await _stockManagerClient.GetProductStockAsync(itemRequest.ProductId);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, ">>> Critical failure while querying stock for product '{ProductId}'", itemRequest.ProductId);
+
+                throw new InvalidOperationException($"Serviço de estoque indisponível. Não foi possível procurar pelo produto '{itemRequest.ProductId}'. Tente novamente mais tarde.");
+            }
 
             if (productInfo == null)
             {
-                _logger.LogWarning(">>> Product not found while creating sale. ProductId='{ProductId}'", itemRequest.ProductId);
+                _logger.LogWarning(">>> Product '{ProductId}' not registered in stock.", itemRequest.ProductId);
                 throw new KeyNotFoundException($"Produto com Id '{itemRequest.ProductId}' não encontrado.");
             }
 
-            await ValidateItems(productInfo, itemRequest);
+            if (productInfo.StockQuantity < itemRequest.Quantity)
+            {
+                _logger.LogWarning(">>> Insufficient stock for product '{ProductId}'.", itemRequest.ProductId);
+                throw new InvalidOperationException($"Estoque insuficiente para o produto com Id '{itemRequest.ProductId}' - '{productInfo.ProductName}'. Solicitado: {itemRequest.Quantity}, Disponível: {productInfo.StockQuantity}");
+            }
 
             sale.AddItem(itemRequest.ProductId, itemRequest.Quantity, productInfo.UnitPrice);
         }
@@ -105,17 +134,21 @@ public class SaleService : ISaleService
             throw new InvalidOperationException($"A Venda com Id '{saleId}' está com o status '{sale.Status}', o qual não permite cancelamento.");
         }
 
-        // Compensação: devolver itens ao estoque (chamadas externas)
         if (sale.Status != SaleStatus.PendingPayment)
         {
             foreach (var item in sale.Items)
             {
-                _logger.LogInformation(">>> Returning stock for ProductId='{ProductId}' Quantity='{Quantity}' as part of cancel SaleId='{SaleId}'", item.ProductId, item.Quantity, saleId);
+                _logger.LogInformation(">>> Attempting to return stock. ProductId='{ProductId}'. Resilience policies will apply.", item.ProductId);
                 var success = await _stockManagerClient.IncreaseStockAsync(item.ProductId, item.Quantity);
+
                 if (!success)
                 {
-                    _logger.LogError(">>> Failed to return stock for ProductId='{ProductId}' during cancel SaleId='{SaleId}'", item.ProductId, saleId);
-                    throw new InvalidOperationException($"Falha ao devolver estoque para o produto '{item.ProductId}'. Cancelamento abortado.");
+                    _logger.LogError(">>> FATAL: Failed to return stock after resilience attempts. ProductId='{ProductId}' SaleId='{SaleId}'", item.ProductId, saleId);
+
+                    // ATENÇÃO: Aqui você tem uma decisão de design.
+                    // Opção A: [escolhida] Abortar tudo. O banco de dados não atualiza a venda para Cancelada.
+                    // Opção B: [TODO FUTURO] Salvar em uma tabela de "Outbox" ou fila para tentar devolver o estoque depois (Async Communication real).
+                    throw new InvalidOperationException($"Serviço de estoque indisponível. Não foi possível devolver o produto '{item.ProductId}'. Tente novamente mais tarde.");
                 }
             }
         }
@@ -149,7 +182,8 @@ public class SaleService : ISaleService
 
     public async Task<SaleResponseDTO> UpdateSaleStatusAsync(int saleId, UpdateSaleStatusRequestDTO request)
     {
-        _logger.LogInformation(">>> UpdateSaleStatus requested. SaleId='{SaleId}' RequestedStatus='{RequestedStatus}'", saleId, request.NewStatus);
+        _logger.LogInformation(">>> UpdateSaleStatus requested. SaleId='{SaleId}' NewStatus='{NewStatus}'", saleId, request.NewStatus);
+
         var sale = await _saleRepository.GetByIdAsync(saleId);
         if (sale == null)
         {
@@ -180,6 +214,7 @@ public class SaleService : ISaleService
                     _logger.LogWarning(">>> UpdateSaleStatus invalid current state for Paid. SaleId='{SaleId}' CurrentStatus='{CurrentStatus}'", saleId, currentStatus);
                     throw new InvalidOperationException($"Venda de Id '{saleId}' e com status '{currentStatus}' só pode ser marcada como '{newStatus}' se estiver como '{SaleStatus.PendingPayment}'.");
                 }
+
                 await SetStatusToPaid(sale);
                 break;
 
@@ -212,45 +247,42 @@ public class SaleService : ISaleService
 
         await _saleRepository.UpdateAsync(sale);
 
-        _logger.LogInformation(">>> UpdateSaleStatus completed. SaleId='{SaleId}' NewStatus='{NewStatus}'", saleId, newStatus);
+        _logger.LogInformation(">>> UpdateSaleStatus completed. SaleId='{SaleId}'", saleId);
         return _mapper.Map<SaleResponseDTO>(sale);
     }
 
     private async Task SetStatusToPaid(Sale sale)
     {
-        _logger.LogInformation(">>> Setting sale to Paid. SaleId='{SaleId}'", sale.Id);
-        sale.SetStatusToPaid();
+        _logger.LogInformation(">>> Processing Payment logic for SaleId='{SaleId}'", sale.Id);
 
-        // Abate estoque: tratar falhas como erro de negócio
+        var itemsDecreasedSuccessfully = new List<SaleItem>();
+
         foreach (var item in sale.Items)
         {
-            _logger.LogInformation(">>> Decreasing stock for ProductId='{ProductId}' Quantity='{Quantity}' for SaleId='{SaleId}'", item.ProductId, item.Quantity, sale.Id);
+            _logger.LogInformation(">>> Decreasing stock: ProductId='{ProductId}' Qty='{Quantity}'", item.ProductId, item.Quantity);
+
             var success = await _stockManagerClient.DecreaseStockAsync(item.ProductId, item.Quantity);
-            if (!success)
+
+            if (success)
             {
-                // Reverter estado de domínio se necessário ou lançar erro de negócio
-                throw new InvalidOperationException($"Falha ao abater estoque para o produto '{item.ProductId}'. Operação abortada.");
+                itemsDecreasedSuccessfully.Add(item);
             }
-            _logger.LogDebug(">>> Decreased stock succeeded for ProductId='{ProductId}' SaleId='{SaleId}'", item.ProductId, sale.Id);
-        }
-    }
+            else
+            {
+                _logger.LogError(">>> FALHA NO ESTOQUE: Não foi possível abater o item '{ProductId}'. Iniciando compensação (Rollback)...", item.ProductId);
 
-    private Task ValidateItems(ProductStockInfoDTO productInfo, CreateSaleItemRequestDTO itemRequest)
-    {
-        _logger.LogDebug(">>> Validating item ProductId='{ProductId}' Quantity='{Quantity}' Stock='{Stock}'", itemRequest.ProductId, itemRequest.Quantity, productInfo.StockQuantity);
+                foreach (var itemToRollback in itemsDecreasedSuccessfully)
+                {
+                    _logger.LogWarning(">>> ROLLBACK: Devolvendo item '{ProductId}' Qty='{Quantity}'", itemToRollback.ProductId, itemToRollback.Quantity);
 
-        if (itemRequest.Quantity < 0)
-        {
-            _logger.LogWarning(">>> Invalid quantity for ProductId='{ProductId}': {Quantity}", itemRequest.ProductId, itemRequest.Quantity);
-            throw new InvalidOperationException($"A quantidade (Item: '{itemRequest.ProductId}', quantidade: '{itemRequest.Quantity}') não pode ser menor que zero.");
-        }
+                    await _stockManagerClient.IncreaseStockAsync(itemToRollback.ProductId, itemToRollback.Quantity);
+                }
 
-        if (productInfo.StockQuantity < itemRequest.Quantity)
-        {
-            _logger.LogWarning(">>> Insufficient stock for ProductId='{ProductId}' Requested={Requested} Available={Available}", itemRequest.ProductId, itemRequest.Quantity, productInfo.StockQuantity);
-            throw new InvalidOperationException($"Estoque insuficiente para '{productInfo.ProductName}'.");
+                throw new InvalidOperationException($"Falha ao comunicar com o Estoque para o produto '{item.ProductId}'. A operação foi cancelada e os estoques revertidos.");
+            }
         }
 
-        return Task.CompletedTask;
+        sale.SetStatusToPaid();
+        _logger.LogInformation(">>> Stock decreased successfully for all items. Sale set to Paid in memory.");
     }
 }

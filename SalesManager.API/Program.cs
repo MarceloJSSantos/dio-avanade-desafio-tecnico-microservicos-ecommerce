@@ -27,6 +27,9 @@ builder.Logging.AddFilter("Microsoft.EntityFrameworkCore.Database.Command", LogL
 
 var DbConnection = builder.Configuration.GetConnectionString("DbConnection");
 
+var stockManagerUrl = builder.Configuration["ServiceUrls:StockManager"]
+                      ?? throw new InvalidOperationException("URL do StockManager não configurada.");
+
 // Add services to the container.
 
 // Swagger/OpenAPI
@@ -80,7 +83,13 @@ builder.Services.AddScoped<ISaleRepository, SaleRepository>();
 builder.Services.AddScoped<ISaleService, SaleService>();
 
 // Configurar o HttpClient para o StockManager
-builder.Services.AddHttpClient<IStockManagerClient, StockManagerClient>();
+builder.Services.AddHttpClient<IStockManagerClient, StockManagerClient>(client =>
+{
+    client.BaseAddress = new Uri(stockManagerUrl);
+    client.Timeout = TimeSpan.FromSeconds(10); // Timeout global da requisição
+})
+.AddStandardResilienceHandler(); // Adiciona Retry, Circuit Breaker, etc. automaticamente
+
 
 // Registrar o AutoMapper
 // Isso irá escanear o assembly que contém o 'MappingProfile' 

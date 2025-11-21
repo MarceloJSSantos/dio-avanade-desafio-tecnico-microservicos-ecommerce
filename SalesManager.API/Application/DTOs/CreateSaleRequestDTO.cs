@@ -36,6 +36,22 @@ namespace SalesManager.API.Application.DTOs
                 yield break;
             }
 
+            // Valida se ProductId duplicado
+            var duplicateItems = Items
+                .GroupBy(x => x.ProductId)
+                .Where(g => g.Count() > 1)
+                .Select(g => g.Key)
+                .ToList();
+
+            if (duplicateItems.Any())
+            {
+                var idsString = string.Join(", ", duplicateItems);
+                yield return new ValidationResult(
+                    $"A lista contém produtos duplicados. IDs duplicados: {idsString}, agrupe-os.",
+                    new[] { nameof(Items) }
+                );
+            }
+
             for (int i = 0; i < Items.Count; i++)
             {
                 var item = Items[i];
