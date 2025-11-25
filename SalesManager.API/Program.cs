@@ -5,6 +5,7 @@ using SalesManager.API.Infrastructure.Db;
 using SalesManager.API.Infrastructure.HttpClients;
 using Microsoft.AspNetCore.Mvc;
 using SalesManager.API.Infrastructure.Middleware;
+using MassTransit;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -22,6 +23,7 @@ builder.Logging.AddConsole()
     });
 
 builder.Logging.AddDebug();
+
 // Reduzir verbosidade de EF Core SQL em produção
 builder.Logging.AddFilter("Microsoft.EntityFrameworkCore.Database.Command", LogLevel.Warning);
 
@@ -90,11 +92,33 @@ builder.Services.AddHttpClient<IStockManagerClient, StockManagerClient>(client =
 })
 .AddStandardResilienceHandler(); // Adiciona Retry, Circuit Breaker, etc. automaticamente
 
-
 // Registrar o AutoMapper
 // Isso irá escanear o assembly que contém o 'MappingProfile' 
 // e registrar todos os perfis de mapeamento encontrados.
 builder.Services.AddAutoMapper(AppDomain.CurrentDomain.GetAssemblies());
+
+// ÚNICA OCORRÊNCIA da CONFIGURAÇÃO DO MASSTRANSIT (RABBITMQ)
+builder.Services.AddMassTransit(x =>
+{
+    // 1. Opcional: Adicione Consumers se houver (para demonstração)
+    // x.AddConsumer<MyMessageConsumer>(); 
+
+    // 2. Configure o RabbitMQ - CHAME ISTO APENAS UMA VEZ!
+    x.UsingRabbitMq((context, cfg) =>
+    {
+        // Usando a Opção 1 que sugeri: URI completo
+        var rabbitMqUri = builder.Configuration["RabbitMQ:Uri"]
+                           ?? "amqp://qualquer:qualquer@localhost:5672";
+
+        cfg.Host(rabbitMqUri); // Configura Host, VHost, Username e Password
+
+        // Se você tiver Consumers registrados, use ConfigureEndpoints
+        // Se este serviço for SOMENTE um Publisher (produtor), 
+        // a linha abaixo é opcional e muitas vezes é removida para evitar
+        // a criação automática de Receive Endpoints desnecessários/vazios.
+        //cfg.ConfigureEndpoints(context);
+    });
+});
 
 builder.Services.AddOpenApi();
 
