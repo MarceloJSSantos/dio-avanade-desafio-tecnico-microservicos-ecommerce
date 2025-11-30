@@ -61,15 +61,20 @@ namespace SalesManager.API.Domain.Entities
 
         public void SetStatusToCancel()
         {
-            // Regra de negócio: só pode cancelar se não estiver enviado/concluído
-            if (Status != SaleStatus.Shipped && Status != SaleStatus.Completed && Status != SaleStatus.Cancelled)
+            // Regra de negócio: **NÃO** pode cancelar se já estiver enviado ou concluído.
+            if (Status == SaleStatus.Shipped || Status == SaleStatus.Completed)
             {
-                Status = SaleStatus.Cancelled;
+                throw new InvalidOperationException("Não é possível cancelar uma venda já enviada ou concluída.");
             }
-            else
+
+            // Se a venda já estiver Cancelled, simplesmente saia. (Idempotência)
+            if (Status == SaleStatus.Cancelled)
             {
-                throw new InvalidOperationException("Não é possível cancelar uma venda já enviada/concluída ou já cancelada.");
+                return;
             }
+
+            // Se estiver em qualquer outro status (Pending, Paid, etc.), o cancelamento é permitido.
+            Status = SaleStatus.Cancelled;
         }
 
         public void SetStatusToCompleted()

@@ -4,22 +4,27 @@ using SalesManager.API.Application.DTOs;
 using SalesManager.API.Application.Interfaces;
 using SalesManager.API.Domain.Entities;
 using SalesManager.API.Domain.Enums;
+using MassTransit;
+using SalesManager.API.Application.Events;
 
 public class SaleService : ISaleService
 {
     private readonly ISaleRepository _saleRepository;
     private readonly IStockManagerClient _stockManagerClient;
+    private readonly IPublishEndpoint _publishEndpoint;
     private readonly IMapper _mapper;
     private readonly ILogger<SaleService> _logger;
 
     public SaleService(
         ISaleRepository saleRepository,
         IStockManagerClient stockManagerClient,
+        IPublishEndpoint publishEndpoint,
         IMapper mapper,
         ILogger<SaleService> logger)
     {
         _saleRepository = saleRepository;
         _stockManagerClient = stockManagerClient;
+        _publishEndpoint = publishEndpoint;
         _mapper = mapper;
         _logger = logger;
     }
@@ -28,20 +33,6 @@ public class SaleService : ISaleService
     {
         _logger.LogInformation(">>> Creating sale for CustomerId='{CustomerId}' ItemsCount='{ItemsCount}'", request.CustomerId, request.Items?.Count ?? 0);
         var sale = new Sale(request.CustomerId);
-
-        // // Validação de Duplicidade (Regra Crítica para o Estoque)
-        // var duplicateProducts = request.Items
-        //     .GroupBy(i => i.ProductId)
-        //     .Where(g => g.Count() > 1)
-        //     .Select(g => g.Key)
-        //     .ToList();
-
-        // if (duplicateProducts.Any())
-        // {
-        //     var ids = string.Join(", ", duplicateProducts);
-        //     _logger.LogWarning("Produtos duplicados detectados na requisição. Ids: {ids}. Agrupe os itens antes de enviar.", ids);
-        //     throw new InvalidOperationException($"Produtos duplicados detectados na requisição. Ids: {ids}. Agrupe os itens antes de enviar.");
-        // }
 
         foreach (var itemRequest in request.Items!)
         {
@@ -54,7 +45,6 @@ public class SaleService : ISaleService
             catch (Exception ex)
             {
                 _logger.LogError(ex, ">>> Critical failure while querying stock for product '{ProductId}'", itemRequest.ProductId);
-
                 throw new InvalidOperationException($"Serviço de estoque indisponível. Não foi possível procurar pelo produto '{itemRequest.ProductId}'. Tente novamente mais tarde.");
             }
 
@@ -84,10 +74,12 @@ public class SaleService : ISaleService
                 case SaleStatus.PendingPayment:
                     break;
                 case SaleStatus.Paid:
-                    await SetStatusToPaid(sale);
+                    sale.SetStatusToPaid();
+                    await PublishSalePaidEvent(sale);
                     break;
                 case SaleStatus.Shipped:
-                    await SetStatusToPaid(sale);
+                    sale.SetStatusToPaid();
+                    await PublishSalePaidEvent(sale);
                     sale.SetStatusToShipped();
                     break;
                 default:
@@ -97,7 +89,7 @@ public class SaleService : ISaleService
         }
 
         await _saleRepository.AddAsync(sale);
-        await _saleRepository.UpdateAsync(sale);
+        await _saleRepository.SaveChangesAsync();
 
         _logger.LogInformation(">>> Sale created with Id='{SaleId}' CustomerId='{CustomerId}' Total='{Total}'", sale.Id, sale.CustomerId, sale.TotalPrice);
         return _mapper.Map<SaleResponseDTO>(sale);
@@ -134,27 +126,23 @@ public class SaleService : ISaleService
             throw new InvalidOperationException($"A Venda com Id '{saleId}' está com o status '{sale.Status}', o qual não permite cancelamento.");
         }
 
-        if (sale.Status != SaleStatus.PendingPayment)
+        sale.SetStatusToCancel();
+
+        if (sale.Items != null && sale.Items.Any())
         {
-            foreach (var item in sale.Items)
+            var eventMessage = new SaleCancelledEvent
             {
-                _logger.LogInformation(">>> Attempting to return stock. ProductId='{ProductId}'. Resilience policies will apply.", item.ProductId);
-                var success = await _stockManagerClient.IncreaseStockAsync(item.ProductId, item.Quantity);
+                SaleId = sale.Id,
+                CancelledAt = DateTime.UtcNow,
+                Items = sale.Items.Select(i => new SaleItemMessage(i.ProductId, i.Quantity)).ToList()
+            };
 
-                if (!success)
-                {
-                    _logger.LogError(">>> FATAL: Failed to return stock after resilience attempts. ProductId='{ProductId}' SaleId='{SaleId}'", item.ProductId, saleId);
-
-                    // ATENÇÃO: Aqui você tem uma decisão de design.
-                    // Opção A: [escolhida] Abortar tudo. O banco de dados não atualiza a venda para Cancelada.
-                    // Opção B: [TODO FUTURO] Salvar em uma tabela de "Outbox" ou fila para tentar devolver o estoque depois (Async Communication real).
-                    throw new InvalidOperationException($"Serviço de estoque indisponível. Não foi possível devolver o produto '{item.ProductId}'. Tente novamente mais tarde.");
-                }
-            }
+            await _publishEndpoint.Publish(eventMessage);
+            _logger.LogInformation(">>> The SaleCancelledEvent event has been queued in Outbox for SaleId='{SaleId}'", saleId);
         }
 
-        sale.SetStatusToCancel();
         await _saleRepository.UpdateAsync(sale);
+        await _saleRepository.SaveChangesAsync();
 
         _logger.LogInformation(">>> Sale cancelled successfully. SaleId='{SaleId}'", saleId);
         return true;
@@ -215,7 +203,8 @@ public class SaleService : ISaleService
                     throw new InvalidOperationException($"Venda de Id '{saleId}' e com status '{currentStatus}' só pode ser marcada como '{newStatus}' se estiver como '{SaleStatus.PendingPayment}'.");
                 }
 
-                await SetStatusToPaid(sale);
+                sale.SetStatusToPaid();
+                await PublishSalePaidEvent(sale);
                 break;
 
             case SaleStatus.Shipped:
@@ -246,43 +235,23 @@ public class SaleService : ISaleService
         }
 
         await _saleRepository.UpdateAsync(sale);
+        await _saleRepository.SaveChangesAsync();
 
         _logger.LogInformation(">>> UpdateSaleStatus completed. SaleId='{SaleId}'", saleId);
         return _mapper.Map<SaleResponseDTO>(sale);
     }
 
-    private async Task SetStatusToPaid(Sale sale)
+    // Método auxiliar privado para montar o evento de Pagamento
+    private async Task PublishSalePaidEvent(Sale sale)
     {
-        _logger.LogInformation(">>> Processing Payment logic for SaleId='{SaleId}'", sale.Id);
-
-        var itemsDecreasedSuccessfully = new List<SaleItem>();
-
-        foreach (var item in sale.Items)
+        var eventMessage = new SalePaidEvent
         {
-            _logger.LogInformation(">>> Decreasing stock: ProductId='{ProductId}' Qty='{Quantity}'", item.ProductId, item.Quantity);
+            SaleId = sale.Id,
+            CorrelationId = Guid.NewGuid(),
+            Items = sale.Items.Select(i => new SaleItemMessage(i.ProductId, i.Quantity)).ToList()
+        };
 
-            var success = await _stockManagerClient.DecreaseStockAsync(item.ProductId, item.Quantity);
-
-            if (success)
-            {
-                itemsDecreasedSuccessfully.Add(item);
-            }
-            else
-            {
-                _logger.LogError(">>> FALHA NO ESTOQUE: Não foi possível abater o item '{ProductId}'. Iniciando compensação (Rollback)...", item.ProductId);
-
-                foreach (var itemToRollback in itemsDecreasedSuccessfully)
-                {
-                    _logger.LogWarning(">>> ROLLBACK: Devolvendo item '{ProductId}' Qty='{Quantity}'", itemToRollback.ProductId, itemToRollback.Quantity);
-
-                    await _stockManagerClient.IncreaseStockAsync(itemToRollback.ProductId, itemToRollback.Quantity);
-                }
-
-                throw new InvalidOperationException($"Falha ao comunicar com o Estoque para o produto '{item.ProductId}'. A operação foi cancelada e os estoques revertidos.");
-            }
-        }
-
-        sale.SetStatusToPaid();
-        _logger.LogInformation(">>> Stock decreased successfully for all items. Sale set to Paid in memory.");
+        await _publishEndpoint.Publish(eventMessage);
+        _logger.LogInformation(">>> The SalePaidEvent event is queued in Outbox. SaleId='{SaleId}'", sale.Id);
     }
 }

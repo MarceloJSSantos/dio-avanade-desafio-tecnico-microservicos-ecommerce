@@ -6,6 +6,7 @@ using SalesManager.API.Infrastructure.HttpClients;
 using Microsoft.AspNetCore.Mvc;
 using SalesManager.API.Infrastructure.Middleware;
 using MassTransit;
+using SalesManager.API.Application.Consumers;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -93,30 +94,45 @@ builder.Services.AddHttpClient<IStockManagerClient, StockManagerClient>(client =
 .AddStandardResilienceHandler(); // Adiciona Retry, Circuit Breaker, etc. automaticamente
 
 // Registrar o AutoMapper
-// Isso irá escanear o assembly que contém o 'MappingProfile' 
-// e registrar todos os perfis de mapeamento encontrados.
+
 builder.Services.AddAutoMapper(AppDomain.CurrentDomain.GetAssemblies());
 
-// ÚNICA OCORRÊNCIA da CONFIGURAÇÃO DO MASSTRANSIT (RABBITMQ)
+// Configuração do MassTransit (RabbitMQ)
 builder.Services.AddMassTransit(x =>
 {
-    // 1. Opcional: Adicione Consumers se houver (para demonstração)
-    // x.AddConsumer<MyMessageConsumer>(); 
+    // Configura o Outbox usando o EF Core
+    x.AddEntityFrameworkOutbox<SalesDbContext>(o =>
+    {
+        o.UseSqlServer();
+        o.UseBusOutbox();
+    });
 
-    // 2. Configure o RabbitMQ - CHAME ISTO APENAS UMA VEZ!
+    // Registra o Consumer que vai ouvir a RESPOSTA do Estoque
+    x.AddConsumer<StockResponseConsumer>();
+    // Registra o Consumer de Erro
+    x.AddConsumer<StockErrorConsumer>();
+
+    // Configure o RabbitMQ
     x.UsingRabbitMq((context, cfg) =>
     {
-        // Usando a Opção 1 que sugeri: URI completo
         var rabbitMqUri = builder.Configuration["RabbitMQ:Uri"]
                            ?? "amqp://qualquer:qualquer@localhost:5672";
 
-        cfg.Host(rabbitMqUri); // Configura Host, VHost, Username e Password
+        cfg.Host(rabbitMqUri);
 
-        // Se você tiver Consumers registrados, use ConfigureEndpoints
-        // Se este serviço for SOMENTE um Publisher (produtor), 
-        // a linha abaixo é opcional e muitas vezes é removida para evitar
-        // a criação automática de Receive Endpoints desnecessários/vazios.
-        //cfg.ConfigureEndpoints(context);
+        cfg.ReceiveEndpoint("sales-manager-response", e =>
+        {
+            e.UseEntityFrameworkOutbox<SalesDbContext>(context);
+            e.UseMessageRetry(r => r.Intervals(100, 500, 1000));
+            e.ConfigureConsumer<StockResponseConsumer>(context);
+        });
+
+        cfg.ReceiveEndpoint("sales-error-compensation-queue", e =>
+        {
+            e.UseEntityFrameworkOutbox<SalesDbContext>(context);
+            e.UseMessageRetry(r => r.Intervals(100, 500, 1000));
+            e.ConfigureConsumer<StockErrorConsumer>(context);
+        });
     });
 });
 

@@ -15,10 +15,14 @@ namespace SalesManager.API.Domain.Repositories
             _context = context;
         }
 
+        public async Task<int> SaveChangesAsync()
+        {
+            return await _context.SaveChangesAsync();
+        }
+
         public async Task AddAsync(Sale sale)
         {
             await _context.Sales.AddAsync(sale);
-            await _context.SaveChangesAsync();
         }
 
         public async Task<IEnumerable<Sale>> GetByCustomerIdAsync(int customerId)
@@ -38,9 +42,7 @@ namespace SalesManager.API.Domain.Repositories
 
         public async Task UpdateAsync(Sale sale)
         {
-            // Garante que a entidade está sendo rastreada como modificada
             _context.Sales.Update(sale);
-            await _context.SaveChangesAsync();
         }
 
         public async Task<PagedResult<Sale>> GetSalesAsync(int pageNumber, int pageSize)

@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using SalesManager.API.Domain.Entities;
+using MassTransit;
 
 namespace SalesManager.API.Infrastructure.Db
 {
@@ -30,6 +31,12 @@ namespace SalesManager.API.Infrastructure.Db
                 // Configura o 'Id' como auto-incremental
                 e.Property(i => i.Id).ValueGeneratedOnAdd();
             });
+
+            // Configuração do MassTransit (Transactional Outbox)
+            modelBuilder.AddInboxStateEntity();
+            modelBuilder.AddOutboxMessageEntity();
+            modelBuilder.AddOutboxStateEntity();
+
         }
     }
 }

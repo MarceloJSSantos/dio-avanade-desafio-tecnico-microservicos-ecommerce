@@ -10,5 +10,6 @@ namespace SalesManager.API.Application.Interfaces
         Task AddAsync(Sale sale);
         Task UpdateAsync(Sale sale);
         Task<PagedResult<Sale>> GetSalesAsync(int pageNumber, int pageSize);
+        Task<int> SaveChangesAsync();
     }
 }
