@@ -1,5 +1,7 @@
+using MassTransit;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using StockManager.API.Application.Consumers;
 using StockManager.API.Application.Interfaces;
 using StockManager.API.Application.Services;
 using StockManager.API.Infrastructure.Db;
@@ -73,6 +75,49 @@ builder.Services.AddControllers()
             return new BadRequestObjectResult(problemDetails);
         };
     });
+
+// Configuração dp MassTransit para consumo
+builder.Services.AddMassTransit(x =>
+{
+    // Configura o Outbox com EF Core
+    x.AddEntityFrameworkOutbox<StockManagerContext>(o =>
+    {
+        o.UseSqlServer();
+        o.UseBusOutbox(); // Ativa o Outbox no barramento
+    });
+
+    // Registra os Consumers
+    x.AddConsumer<SalePaidConsumer>();
+    x.AddConsumer<SaleCancelledConsumer>();
+
+    // Configura a conexão com o RabbitMQ
+    x.UsingRabbitMq((context, cfg) =>
+    {
+        // Usando a Opção de URI completo
+        var rabbitMqUri = builder.Configuration["RabbitMQ:Uri"]
+                           ?? "amqp://qualquer:qualquer@localhost:5672";
+
+        cfg.Host(rabbitMqUri);
+
+        // Configura o endpoint de escuta (a fila)
+        cfg.ReceiveEndpoint("stock-deduction-queue", e =>
+        {
+            e.UseEntityFrameworkOutbox<StockManagerContext>(context); // ESTÁ USANDO O OUTBOX?
+            e.UseMessageRetry(r => r.Intervals(100, 500, 1000)); // Adiciona Retry para falhas transitórias
+            e.ConfigureConsumer<SalePaidConsumer>(context);
+        });
+
+        // Devolução de Estoque)
+        cfg.ReceiveEndpoint("stock-return-queue", e =>
+        {
+            e.UseEntityFrameworkOutbox<StockManagerContext>(context);
+            e.UseMessageRetry(r => r.Intervals(100, 500, 1000));
+            e.ConfigureConsumer<SaleCancelledConsumer>(context);
+        });
+
+        //cfg.ConfigureEndpoints(context);
+    });
+});
 
 builder.Services.AddOpenApi();
 

@@ -1,6 +1,7 @@
 using StockManager.API.Application.Common;
 using StockManager.API.Domain.Entities;
 using StockManager.API.Application.DTOs;
+using SalesManager.API.Application.Events;
 
 namespace StockManager.API.Application.Interfaces
 {
@@ -13,5 +14,7 @@ namespace StockManager.API.Application.Interfaces
         Task<int> UpdateStockAsync(int productId, int transactionAmount);
 
         Task<PagedResult<ProductResponseDTO>> GetPagedProductsAsync(int page, int pageSize);
+
+        Task<bool> UpdateStockBatchAsync(List<SaleItemMessage> items, bool isDeduction);
     }
 }

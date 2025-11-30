@@ -5,18 +5,25 @@ using StockManager.API.Infrastructure.Db;
 using StockManager.API.Application.Common;
 using StockManager.API.Application.DTOs;
 using AutoMapper;
+using SalesManager.API.Application.Events;
+using MassTransit;
 
 namespace StockManager.API.Application.Services
 {
     public class ProductService : IProductService
     {
         private readonly StockManagerContext _context;
+        private readonly IPublishEndpoint _publishEndpoint;
         private readonly ILogger<ProductService> _logger;
         private readonly IMapper _mapper;
 
-        public ProductService(StockManagerContext context, ILogger<ProductService> logger, IMapper mapper)
+        public ProductService(StockManagerContext context,
+                    IPublishEndpoint publishEndpoint,
+                    ILogger<ProductService> logger,
+                    IMapper mapper)
         {
             _context = context;
+            _publishEndpoint = publishEndpoint;
             _logger = logger;
             _mapper = mapper;
         }
@@ -96,6 +103,34 @@ namespace StockManager.API.Application.Services
                 Items = productDtos,
                 TotalCount = total
             };
+        }
+
+        public async Task<bool> UpdateStockBatchAsync(List<SaleItemMessage> items, bool isDeduction)
+        {
+            _logger.LogInformation(">>> Starting Batch Stock Update. ItemsCount={Count}, IsDeduction={IsDeduction}", items.Count, isDeduction);
+            foreach (var item in items)
+            {
+                var product = await _context.Products.FindAsync(item.ProductId);
+
+                if (product == null)
+                {
+                    _logger.LogWarning(">>> Batch Update Failed: Product {ProductId} not found.", item.ProductId);
+                    return false;
+                }
+
+                int changeAmount = isDeduction ? -item.Quantity : item.Quantity;
+                if (product.QuantityInStock + changeAmount < 0)
+                {
+                    _logger.LogWarning(">>> Batch Update Failed: Insufficient stock for {ProductId}. Current: {Current}, Requested: {Requested}",
+                                     item.ProductId, product.QuantityInStock, item.Quantity);
+                    return false;
+                }
+
+                product.QuantityInStock += changeAmount;
+            }
+
+            _logger.LogInformation(">>> Batch Stock Update Committed Successfully.");
+            return true;
         }
     }
 }
