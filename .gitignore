@@ -5,3 +5,6 @@ SalesManager.API/obj/
 
 idp-keycloak/keycloack-data
 idp-keycloak/postgres-data
+
+APIGateway/bin/
+APIGateway/obj/

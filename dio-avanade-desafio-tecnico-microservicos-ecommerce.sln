@@ -2,6 +2,8 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.5.2.0
 MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "APIGateway", "APIGateway\APIGateway.csproj", "{ABE66B30-BD47-A7B2-B17B-5BA67959B026}"
+EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SalesManager.API", "SalesManager.API\SalesManager.API.csproj", "{23D45D48-34A6-97B5-415C-4F61ED395722}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "StockManager.API", "StockManager.API\StockManager.API.csproj", "{E7BE078C-4F0E-9D3B-BFBE-B7BD8D00B356}"
@@ -12,6 +14,10 @@ Global
 		Release|Any CPU = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{ABE66B30-BD47-A7B2-B17B-5BA67959B026}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{ABE66B30-BD47-A7B2-B17B-5BA67959B026}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{ABE66B30-BD47-A7B2-B17B-5BA67959B026}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{ABE66B30-BD47-A7B2-B17B-5BA67959B026}.Release|Any CPU.Build.0 = Release|Any CPU
 		{23D45D48-34A6-97B5-415C-4F61ED395722}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{23D45D48-34A6-97B5-415C-4F61ED395722}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{23D45D48-34A6-97B5-415C-4F61ED395722}.Release|Any CPU.ActiveCfg = Release|Any CPU
@@ -25,6 +31,6 @@ Global
 		HideSolutionNode = FALSE
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
-		SolutionGuid = {6774F0F1-96D8-40F6-8063-883000EE49E2}
+		SolutionGuid = {E698FE8D-F7FB-4E72-98FC-40EAF696D45C}
 	EndGlobalSection
 EndGlobal
