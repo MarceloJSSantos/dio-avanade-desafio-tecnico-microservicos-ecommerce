@@ -2,3 +2,6 @@ StockManager.API/bin/
 StockManager.API/obj/
 SalesManager.API/bin/
 SalesManager.API/obj/
+
+idp-keycloak/keycloack-data
+idp-keycloak/postgres-data
