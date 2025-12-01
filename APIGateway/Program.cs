@@ -1,12 +1,23 @@
 using Ocelot.DependencyInjection;
 using Ocelot.Middleware;
-using Microsoft.Extensions.Configuration; // Necessário para AddJsonFile
 
 var builder = WebApplication.CreateBuilder(args);
 
-// 1. Configura o Ocelot para carregar o arquivo ocelot.json
-builder.Configuration.AddJsonFile("ocelot.json", optional: false, reloadOnChange: true);
-builder.Services.AddOcelot();
+// Configuração para que o Ocelot use a pasta OcelotConfig (na raiz do projeto)
+builder.Configuration.AddOcelot("OcelotConfig", builder.Environment);
+
+// Configuração do Serviço de Autenticação
+builder.Services.AddAuthentication("Bearer")
+    .AddJwtBearer("Bearer", options =>
+    {
+        // valores que vem do Keycloack
+        options.Authority = "http://localhost:8080/realms/DesafioTecnicoAvanade"; // Ex: URL do seu IdentityServer ou Provedor de JWT
+        options.Audience = "api-gateway"; // Ex: Nome da sua Audience. Usei api-gateway, mas o Keycloak não envia
+        options.RequireHttpsMetadata = false; // Mantenha 'true' em produção
+    });
+
+// Passa a configuração consolidada do Ocelot
+builder.Services.AddOcelot(builder.Configuration);
 
 // Adicione outros serviços, como o Swagger/OpenAPI, se desejar
 builder.Services.AddControllers();
@@ -41,8 +52,12 @@ if (app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 
-// 2. Adiciona o middleware do Ocelot
+// Adiciona o middleware do Ocelot
 app.MapControllers();
-await app.UseOcelot(); // O 'await' é necessário para o UseOcelot
+// Tem que vir ANTES de app.UseOcelot()
+app.UseAuthentication();
+app.UseAuthorization();
+
+await app.UseOcelot();
 
 app.Run();

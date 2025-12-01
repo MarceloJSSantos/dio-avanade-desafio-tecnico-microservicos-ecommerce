@@ -1,0 +1,99 @@
+{
+  "Routes": [
+    {
+      "DownstreamPathTemplate": "/api/sales",
+      "DownstreamScheme": "http",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "localhost",
+          "Port": 5102
+        }
+      ],
+      "UpstreamPathTemplate": "/sale/sales",
+      "UpstreamHttpMethod": [ "Post" ],
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer"
+      },
+      "AddClaimsToRequest": {
+        "X-User-ID": "sub",
+        "X-User-Username": "preferred_username"
+      }
+    },
+    {
+      "DownstreamPathTemplate": "/api/sales", 
+      "DownstreamScheme": "http",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "localhost",
+          "Port": 5102
+        }
+      ],
+      "UpstreamPathTemplate": "/sale/sales", 
+      "UpstreamHttpMethod": [ "Get" ],
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer"
+      },
+      "AddClaimsToRequest": {
+        "X-User-ID": "sub",
+        "X-User-Username": "preferred_username"
+      }
+    },
+    {
+      "DownstreamPathTemplate": "/api/sales/{id}",
+      "DownstreamScheme": "http",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "localhost",
+          "Port": 5102
+        }
+      ],
+      "UpstreamPathTemplate": "/sale/sales/{id}",
+      "UpstreamHttpMethod": [ "Get" ],
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer"
+      },
+      "AddClaimsToRequest": {
+        "X-User-ID": "sub",
+        "X-User-Username": "preferred_username"
+      }
+    },
+    {
+      "DownstreamPathTemplate": "/api/sales/{id}/cancel",
+      "DownstreamScheme": "http",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "localhost",
+          "Port": 5102
+        }
+      ],
+      "UpstreamPathTemplate": "/sale/sales/{id}/cancel",
+      "UpstreamHttpMethod": [ "Put" ],
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer"
+      },
+      "AddClaimsToRequest": {
+        "X-User-ID": "sub",
+        "X-User-Username": "preferred_username"
+      }
+    },
+    {
+      "DownstreamPathTemplate": "/api/sales/{id}/status",
+      "DownstreamScheme": "http",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "localhost",
+          "Port": 5102
+        }
+      ],
+      "UpstreamPathTemplate": "/sale/sales/{id}/status",
+      "UpstreamHttpMethod": [ "Patch" ],
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer"
+      },
+      "AddClaimsToRequest": {
+        "X-User-ID": "sub",
+        "X-User-Username": "preferred_username"
+      }
+    }
+  ]
+}

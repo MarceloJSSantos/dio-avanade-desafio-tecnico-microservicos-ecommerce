@@ -8,3 +8,6 @@ idp-keycloak/postgres-data
 
 APIGateway/bin/
 APIGateway/obj/
+
+# Arquivo não rastreado, pois é criado automaticamente pela estratégia OcelotConfig
+APIGateway/ocelot.json
