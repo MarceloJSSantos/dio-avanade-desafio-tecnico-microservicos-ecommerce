@@ -44,12 +44,14 @@ Observações
 - Cada serviço expõe health checks (/health/live e /health/ready). (Em desenvolvimento)
 - Logs possuem header X-Correlation-Id para rastreabilidade.
 
-> 🚧 **AVISO: Testes em Desenvolvimento**
+> 🚧 **AVISO: Testes em Desenvolvimento e outros pontos**
 >
 > Testes unitários e de integração ainda serão implementados:
 >
 > - [ ] Testes Unitários (xUnit/NUnit)
 > - [ ] Testes de Integração com Docker Compose
 > - [ ] Testes E2E
+>
+> - [ ] Adaptação dos Microsserviços para Consumir Informações de Identidade
 >
 > Versão atual focada em arquitetura e comunicação entre serviços.
